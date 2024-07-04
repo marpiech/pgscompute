@@ -1,8 +1,9 @@
 #!/usr/bin/env nextflow
 
 params.sample_id = "no_id_provided"
-params.sample_gvcf = null
-params.interval_vcf = null
+params.g_vcf_gz = null
+params.interval_vcf_gz = null
+params.interval_vcf_gz_tbi = null
 
 process genotype_gvcf {
     container 'intelliseqngs/gatk-4.3.0.0-grch38-no-alt:1.0.0'
@@ -25,19 +26,18 @@ process genotype_gvcf {
     ref_fasta=\$(ls /resources/reference-genomes/*/*.fa)
 
     # Index input files
-    tabix -p vcf ${sample_gvcf}
-    tabix -p vcf ${interval_vcf}
+    tabix -p vcf ${g_vcf_gz}
 
     # Get sample name
-    sample_name=\$(bcftools query -l ${sample_gvcf})
+    sample_name=\$(bcftools query -l ${g_vcf_gz})
 
     # Genotype GVCFs
-    gatk --java-options "-Xmx24g -Xms24g" GenotypeGVCFs \
+    gatk --java-options "-Xmx12g -Xms12g" GenotypeGVCFs \
         --allow-old-rms-mapping-quality-annotation-data \
         --lenient \
         --include-non-variant-sites \
-        --intervals \${interval_vcf} \
-            --variant \${sample_gvcf} \
+        --intervals ${interval_vcf_gz} \
+            --variant ${g_vcf_gz} \
             --output sample-files/\${sample_name}.genotyped-sample.vcf.gz \
             --reference \${ref_fasta}
 
@@ -57,9 +57,9 @@ process genotype_gvcf {
 }
 
 workflow {
-    g_vcf_gz = channel.fromPath(params.g_vcf)
+    g_vcf_gz = channel.fromPath(params.g_vcf_gz)
     interval_vcf_gz = channel.fromPath(params.interval_vcf_gz)
     interval_vcf_gz_tbi = channel.fromPath(params.interval_vcf_gz_tbi)
 
-    genotype_gvcf(g_vcf_gz, interval_vcf_gz)
+    genotype_gvcf(g_vcf_gz, interval_vcf_gz, interval_vcf_gz_tbi)
 }
